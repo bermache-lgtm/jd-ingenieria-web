@@ -185,3 +185,60 @@
     });
   }
 })();
+
+/* productos: filtros + ficha técnica */
+(function(){
+  var grid = document.querySelector('.prod-grid'); if(!grid) return;
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var cards = Array.prototype.slice.call(grid.querySelectorAll('.prod'));
+  var empty = document.querySelector('.prod-empty');
+  var state = {cat:'all', uso:'all'};
+  function apply(){
+    var shown = 0;
+    cards.forEach(function(c){
+      var ok = (state.cat === 'all' || c.dataset.cat === state.cat) && (state.uso === 'all' || c.dataset.uso === state.uso);
+      if(ok){ shown++; c.hidden = false; c.classList.remove('pre'); requestAnimationFrame(function(){ c.classList.remove('out'); }); }
+      else { c.classList.add('out'); setTimeout(function(){ if(c.classList.contains('out')) c.hidden = true; }, reduce ? 0 : 320); }
+    });
+    empty.hidden = shown > 0;
+  }
+  function group(attr, key){
+    var btns = Array.prototype.slice.call(document.querySelectorAll('[' + attr + ']'));
+    btns.forEach(function(b){ b.addEventListener('click', function(){
+      btns.forEach(function(x){ x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      state[key] = b.getAttribute(attr); apply();
+    }); });
+  }
+  group('data-pf', 'cat'); group('data-pu', 'uso');
+
+  var pm = document.querySelector('.pm'), last = null;
+  function open(card){
+    last = document.activeElement;
+    var img = card.querySelector('.prod-img img');
+    pm.querySelector('.pm-img img').src = img.getAttribute('src');
+    pm.querySelector('.pm-img img').alt = img.alt;
+    pm.querySelector('#pm-title').textContent = card.dataset.name;
+    pm.querySelector('.pm-sub').textContent = card.dataset.sub;
+    pm.querySelector('.pm-uso').textContent = card.dataset.usoname;
+    pm.querySelector('.pm-wa').href = card.dataset.wa;
+    var specs = pm.querySelector('.pm-specs'); specs.innerHTML = '';
+    specs.appendChild(card.querySelector('template.prod-full').content.cloneNode(true));
+    pm.hidden = false; document.body.style.overflow = 'hidden';
+    requestAnimationFrame(function(){ pm.classList.add('open'); });
+    pm.querySelector('.pm-box').scrollTop = 0;
+    pm.querySelector('.pm-close').focus();
+    try{ history.replaceState(null, '', '#' + card.id); }catch(e){}
+  }
+  function close(){
+    pm.classList.remove('open'); document.body.style.overflow = '';
+    setTimeout(function(){ pm.hidden = true; }, reduce ? 0 : 300);
+    if(last) last.focus();
+    try{ history.replaceState(null, '', location.pathname + location.search); }catch(e){}
+  }
+  cards.forEach(function(c){ Array.prototype.forEach.call(c.querySelectorAll('[data-open]'), function(b){ b.addEventListener('click', function(){ open(c); }); }); });
+  pm.querySelector('.pm-close').addEventListener('click', close);
+  pm.addEventListener('click', function(e){ if(e.target === pm) close(); });
+  document.addEventListener('keydown', function(e){ if(!pm.hidden && e.key === 'Escape') close(); });
+  var h = location.hash.slice(1);
+  if(h){ var c = document.getElementById(h); if(c && c.classList.contains('prod')) open(c); }
+})();
